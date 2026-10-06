@@ -46,6 +46,22 @@ const setup=`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_ro
  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  GRANT USAGE ON SCHEMA auth,public TO anon,authenticated,service_role;GRANT EXECUTE ON FUNCTION auth.uid() TO PUBLIC;`;
 const admin='10000000-0000-0000-0000-000000000001',staff='10000000-0000-0000-0000-000000000002',s1='10000000-0000-0000-0000-000000000003',s2='10000000-0000-0000-0000-000000000004',s3='10000000-0000-0000-0000-000000000005',ev='20000000-0000-0000-0000-000000000001',ev2='20000000-0000-0000-0000-000000000002';
+test('complete SQL file installs fresh, links the specified admin, and preserves data on rerun',async()=>{
+ const db=new PGlite();try{
+  await db.exec(setup);await db.exec('ALTER TABLE auth.users ADD COLUMN email text;');
+  const sql=await readFile('deliverables/ARU-DATABASE-FULL.sql','utf8');
+  await db.exec(sql); // No Auth account yet: schema still installs successfully.
+  assert.equal((await db.query('SELECT * FROM public.users')).rows.length,0);
+  await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2)',[admin,'admin16915234@aru.ac.th']);
+  await db.exec(sql);
+  assert.deepEqual((await db.query('SELECT id,username,role FROM public.users')).rows,[{id:admin,username:'16915234',role:'ADMIN'}]);
+  await db.query('INSERT INTO public.events(id,name,totp_secret) VALUES($1,$2,$3)',[ev,'Keep this event',secret]);
+  await db.exec(sql);
+  assert.equal((await db.query('SELECT id FROM public.events')).rows.length,1);
+  assert.equal((await db.query('SELECT id FROM public.users')).rows.length,1);
+  assert.equal((await db.query('SELECT email FROM auth.users')).rows[0].email,'admin16915234@aru.ac.th');
+ }finally{await db.close();}
+});
 test('PostgreSQL: RLS, atomic allocation, attendance idempotency and service-only RPCs',async()=>{
  const db=new PGlite();try{await db.exec(setup);const migration=await readFile('supabase/migrations/202610060001_secure_portals.sql','utf8');await db.exec(migration);await db.exec(migration);
  for(const [id,role,username] of [[admin,'ADMIN','admin'],[staff,'STAFF','staff'],[s1,'STUDENT','00123'],[s2,'STUDENT','00124'],[s3,'STUDENT','00125']])await db.query('INSERT INTO auth.users VALUES($1,$2,null)',[id,JSON.stringify({aru_provisioned:true,role,username,full_name:username})]);

@@ -73,7 +73,7 @@ export async function importStudents(id: string, value: unknown) {
       // A simultaneous import may have created this account. Do not reset its password.
       const retry = await db.from('users').select('id,role').eq('username', s.username).maybeSingle();
       if (retry.data?.role === 'STUDENT') { ids.push(retry.data.id); continue; }
-      throw new ApiError(`สร้างบัญชี ${s.username} ไม่สำเร็จ บัญชีที่สร้างก่อนหน้านี้ยังอยู่ สามารถแก้ไขและนำเข้าใหม่ได้`, 409);
+      throw new ApiError(`สร้างบัญชี ${s.username} ไม่สำเร็จ: ${error.message}`, 409);
     }
     ids.push(data.user.id);
   }
