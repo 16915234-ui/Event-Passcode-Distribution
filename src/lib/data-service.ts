@@ -82,11 +82,24 @@ export async function importStudents(id: string, value: unknown) {
   return { imported: data, message: `จัดสรรรายชื่อและผูก Passcode สำเร็จ ${data} คน` };
 }
 
-export async function allocateExistingStudents(id: string, studentIds: string[]) {
-  if (!Array.isArray(studentIds) || !studentIds.length || studentIds.length > 100) throw new ApiError('เลือกเพิ่มครั้งละ 1-100 คน');
-  await getEvent(id);
+export async function allocateExistingStudents(id: string, userIds?: string[], usernames?: string[]) {
   const db = getServerSupabaseClient();
-  const { data, error } = await db.rpc('allocate_students', { p_event: id, p_students: studentIds });
+  let studentIds: string[] = userIds || [];
+  
+  if (usernames && usernames.length > 0) {
+    if (usernames.length > 200) throw new ApiError('จำกัด 200 คนต่อครั้ง');
+    const lowerUsernames = usernames.map(u => String(u).toLowerCase());
+    const { data } = await db.from('users').select('id, username').in('username', lowerUsernames).eq('role', 'STUDENT');
+    const validIds = (data || []).map(u => u.id);
+    if (validIds.length === 0) throw new ApiError('ไม่พบรหัสนักศึกษาที่ระบุในระบบ กรุณาเพิ่มนักศึกษาเข้าสู่ระบบก่อน');
+    studentIds = [...studentIds, ...validIds];
+  }
+  
+  const uniqueIds = Array.from(new Set(studentIds));
+
+  if (!uniqueIds.length || uniqueIds.length > 200) throw new ApiError('เลือกเพิ่มครั้งละ 1-200 คน');
+  await getEvent(id);
+  const { data, error } = await db.rpc('allocate_students', { p_event: id, p_students: uniqueIds });
   if (error) {
     if (error.message.includes('INSUFFICIENT_PASSCODES')) throw new ApiError('Passcode ไม่พอ กรุณาเพิ่มในคลัง Passcode ก่อน', 409);
     throw error;
