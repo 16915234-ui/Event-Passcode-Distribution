@@ -1,4 +1,7 @@
+const fs = require('fs');
 
+// 1. Update QrScannerModal.tsx
+let modalCode = `
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Camera, X } from 'lucide-react';
@@ -44,3 +47,37 @@ export default function QrScannerModal({ isOpen, onScanSuccess, onClose }: { isO
   if(!isOpen)return null;
   return <dialog ref={dialog} onCancel={e=>{e.preventDefault();close.current();}} className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl bg-white p-5 text-foreground shadow-xl backdrop:bg-black/60"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 font-bold"><Camera size={20}/>สแกน QR Code (ต่อเนื่อง)</h2><Button variant="ghost" size="icon" autoFocus aria-label="ปิดกล้อง" onClick={onClose}><X/></Button></div><div id={id} className="min-h-64 overflow-hidden rounded-xl bg-muted"/>{starting&&<p className="mt-3 text-sm">กำลังเปิดกล้อง...</p>}{error&&<p role="alert" className="mt-3 text-sm text-primary">{error}</p>}<p className="mt-4 text-xs leading-6 text-muted-foreground">ระบบจะสแกนต่อเนื่อง สามารถสแกนบัตรนักศึกษาใบถัดไปได้ทันที</p></dialog>;
 }
+`;
+fs.writeFileSync('src/components/QrScannerModal.tsx', modalCode);
+
+// 2. Update staff/page.tsx
+let staffCode = fs.readFileSync('src/app/staff/page.tsx', 'utf-8');
+staffCode = staffCode.replace(`const [scan,setScan]=useState(false);const [busy,setBusy]=useState(false);const [query,setQuery]=useState('');const [message,setMessage]=useState('');const [failure,setFailure]=useState('');const [candidate,setCandidate]=useState<Registration|null>(null);`, `const [scan,setScan]=useState(false);const [busy,setBusy]=useState(false);const [query,setQuery]=useState('');const [message,setMessage]=useState('');const [failure,setFailure]=useState('');const [candidate,setCandidate]=useState<Registration|null>(null);
+  const audioContext = useRef<AudioContext | null>(null);
+  const playBeep = (success: boolean) => {
+    try {
+      if (!audioContext.current) audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = audioContext.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      if (success) {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start(); osc.stop(ctx.currentTime + 0.1);
+      } else {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(); osc.stop(ctx.currentTime + 0.3);
+      }
+    } catch(e) {}
+  };`);
+
+staffCode = staffCode.replace(`const checkIn=async(body:object)=>{setScan(false);setBusy(true);setFailure('');setMessage('');try{const result=await api<{message:string}>('/api/checkin/staff',{eventId:id,...body});setMessage(result.message);setCandidate(null);await refresh();}catch(e){setFailure(errorText(e));}finally{setBusy(false);}};`, `const checkIn=async(body:any)=>{if(body.method!=='STAFF_SCAN')setScan(false);setBusy(true);setFailure('');setMessage('');try{const result=await api<{message:string}>('/api/checkin/staff',{eventId:id,...body});setMessage(result.message);setCandidate(null);await refresh();if(body.method==='STAFF_SCAN')playBeep(true);}catch(e){setFailure(errorText(e));if(body.method==='STAFF_SCAN')playBeep(false);}finally{setBusy(false);}};`);
+
+if (!staffCode.includes('useRef')) {
+  staffCode = staffCode.replace(`import { useState } from 'react';`, `import { useState, useRef } from 'react';`);
+}
+
+fs.writeFileSync('src/app/staff/page.tsx', staffCode);
+console.log('Scanner updated');
