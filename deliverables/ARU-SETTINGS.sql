@@ -14,9 +14,8 @@ GRANT SELECT ON public.aru_settings TO authenticated;
 -- Service Role (API) can modify
 GRANT ALL ON public.aru_settings TO service_role;
 
--- Insert some default arrays if table is empty
+-- Insert default organization structure if table is empty
 INSERT INTO public.aru_settings (key, value)
 VALUES 
-  ('faculties', '["คณะวิทยาศาสตร์", "คณะครุศาสตร์", "คณะวิทยาการจัดการ", "คณะมนุษยศาสตร์และสังคมศาสตร์", "คณะเทคโนโลยีการเกษตร"]'::jsonb),
-  ('majors', '[]'::jsonb)
+  ('organization', '[{"name": "คณะวิทยาศาสตร์", "majors": ["สาขาวิทยาการคอมพิวเตอร์", "สาขาคณิตศาสตร์"]}, {"name": "คณะครุศาสตร์", "majors": ["สาขาคณิตศาสตร์", "สาขาภาษาไทย"]}]'::jsonb)
 ON CONFLICT DO NOTHING;
