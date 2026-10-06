@@ -25,13 +25,17 @@ CREATE TABLE IF NOT EXISTS public.users (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username text NOT NULL UNIQUE CHECK (username ~ '^[a-z0-9._-]{3,40}$'),
   role text NOT NULL CHECK (role IN ('STUDENT','STAFF','ADMIN')),
-  full_name text NOT NULL CHECK (length(full_name) BETWEEN 1 AND 200)
+  full_name text NOT NULL CHECK (length(full_name) BETWEEN 1 AND 200),
+  faculty text,
+  major text,
+  academic_year text,
+  plaintext_password text
 );
 -- Password hashes belong exclusively to Supabase Auth (auth.users).
 CREATE OR REPLACE FUNCTION public.provision_aru_user() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
   IF NEW.raw_app_meta_data->>'aru_provisioned' = 'true' THEN
-    INSERT INTO public.users(id,username,role,full_name) VALUES (NEW.id, lower(NEW.raw_app_meta_data->>'username'), NEW.raw_app_meta_data->>'role', NEW.raw_app_meta_data->>'full_name');
+    INSERT INTO public.users(id,username,role,full_name,faculty,major,academic_year,plaintext_password) VALUES (NEW.id, lower(NEW.raw_app_meta_data->>'username'), NEW.raw_app_meta_data->>'role', NEW.raw_app_meta_data->>'full_name', NEW.raw_app_meta_data->>'faculty', NEW.raw_app_meta_data->>'major', NEW.raw_app_meta_data->>'academic_year', NEW.raw_app_meta_data->>'plaintext_password');
   END IF;
   RETURN NEW;
 END $$;

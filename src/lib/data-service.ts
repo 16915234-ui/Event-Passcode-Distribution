@@ -51,14 +51,14 @@ export async function performCheckIn(id: string, studentId: string, method: stri
   if (error) { if (error.message.includes('STUDENT_NOT_FOUND')) throw new ApiError('ไม่พบรายชื่อในกิจกรรมนี้', 404); throw error; }
   return { ...data, message: data.alreadyCheckedIn ? 'นักศึกษาเช็คอินเรียบร้อยแล้ว' : 'เช็คอินสำเร็จ นักศึกษาสามารถดู Passcode ได้แล้ว' };
 }
-export interface ImportStudent { username: string; full_name: string; password: string }
+export interface ImportStudent { username: string; full_name: string; password: string; faculty?: string; major?: string; academic_year?: string }
 export function validateStudents(value: unknown): ImportStudent[] {
   if (!Array.isArray(value) || !value.length || value.length > 100) throw new ApiError('นำเข้าครั้งละ 1–100 คน');
   const seen = new Set<string>();
   return value.map((s, i) => {
     if (!s || typeof s.username !== 'string' || !USERNAME.test(s.username) || typeof s.full_name !== 'string' || !s.full_name.trim() || s.full_name.length > 200 || typeof s.password !== 'string' || !s.password) throw new ApiError(`แถว ${i+1}: กรุณาตรวจสอบข้อมูลให้ครบถ้วน`);
     const username = s.username.toLowerCase(); if (seen.has(username)) throw new ApiError(`รหัส ${username} ซ้ำในไฟล์`); seen.add(username);
-    return { username, full_name: s.full_name.trim(), password: s.password };
+    return { username, full_name: s.full_name.trim(), password: s.password, faculty: s.faculty, major: s.major, academic_year: s.academic_year };
   });
 }
 export async function importStudents(id: string, value: unknown) {
@@ -68,7 +68,7 @@ export async function importStudents(id: string, value: unknown) {
     const { data: existing, error: lookupError } = await db.from('users').select('id,role').eq('username', s.username).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing) { if (existing.role !== 'STUDENT') throw new ApiError(`${s.username} เป็นบัญชีบุคลากร`); ids.push(existing.id); continue; }
-    const { data, error } = await db.auth.admin.createUser({ email: accountEmail(s.username), password: s.password, email_confirm: true, app_metadata: { aru_provisioned: true, username: s.username, full_name: s.full_name, role: 'STUDENT' } });
+    const { data, error } = await db.auth.admin.createUser({ email: accountEmail(s.username), password: s.password, email_confirm: true, app_metadata: { aru_provisioned: true, username: s.username, full_name: s.full_name, role: 'STUDENT', faculty: s.faculty, major: s.major, academic_year: s.academic_year, plaintext_password: s.password } });
     if (error) {
       // A simultaneous import may have created this account. Do not reset its password.
       const retry = await db.from('users').select('id,role').eq('username', s.username).maybeSingle();
