@@ -81,3 +81,15 @@ export async function importStudents(id: string, value: unknown) {
   if (error) { if (error.message.includes('INSUFFICIENT_PASSCODES')) throw new ApiError('Passcode ไม่พอ ยังไม่ได้เพิ่มรายชื่อเข้ากิจกรรม เติมรหัสแล้วนำเข้าอีกครั้งได้ บัญชีที่สร้างแล้วจะใช้รหัสผ่านเดิม', 409); throw error; }
   return { imported: data, message: `จัดสรรรายชื่อและผูก Passcode สำเร็จ ${data} คน` };
 }
+
+export async function allocateExistingStudents(id: string, studentIds: string[]) {
+  if (!Array.isArray(studentIds) || !studentIds.length || studentIds.length > 100) throw new ApiError('เลือกเพิ่มครั้งละ 1-100 คน');
+  await getEvent(id);
+  const db = getServerSupabaseClient();
+  const { data, error } = await db.rpc('allocate_students', { p_event: id, p_students: studentIds });
+  if (error) {
+    if (error.message.includes('INSUFFICIENT_PASSCODES')) throw new ApiError('Passcode ไม่พอ กรุณาเพิ่มในคลัง Passcode ก่อน', 409);
+    throw error;
+  }
+  return { imported: data, message: `เพิ่มรายชื่อเข้ากิจกรรมและผูก Passcode สำเร็จ ${data} คน` };
+}
