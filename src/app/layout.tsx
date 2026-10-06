@@ -1,21 +1,11 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
-  title: 'Real-time Event Check-in & Passcode System',
+  title: 'ARU Event Pass | ระบบลงทะเบียนกิจกรรม',
   description:
-    'Zero-latency hybrid check-in system with TOTP Dynamic QR, Pre-assigned Passcodes, and Supabase Realtime by อั๋น (จิรายุทธ บุตรชานนท์)',
+    'ระบบลงทะเบียนและแจก Passcode กิจกรรม มหาวิทยาลัยราชภัฏพระนครศรีอยุธยา พัฒนาโดย จิรายุทธ บุตรชานนท์',
 };
 
 export default function RootLayout({
@@ -26,9 +16,9 @@ export default function RootLayout({
   return (
     <html
       lang="th"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className="h-full antialiased"
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-white font-sans">
+      <body className="min-h-full flex flex-col font-sans">
         {children}
       </body>
     </html>

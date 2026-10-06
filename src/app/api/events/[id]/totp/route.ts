@@ -1,35 +1,10 @@
-import { NextResponse } from 'next/server';
-import { DataService } from '@/lib/data-service';
-import { generateTotpToken, getTotpCycleInfo, TOTP_STEP_SECONDS } from '@/lib/totp';
-
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const event = await DataService.getEventById(id);
-    if (!event) {
-      return NextResponse.json(
-        { success: false, error: 'Event not found' },
-        { status: 404 }
-      );
-    }
-
-    const token = generateTotpToken(event.totp_secret);
-    const cycle = getTotpCycleInfo();
-
-    return NextResponse.json({
-      success: true,
-      token,
-      stepSeconds: TOTP_STEP_SECONDS,
-      ...cycle,
-      timestamp: Math.floor(Date.now() / 1000),
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { success: false, error: err.message || 'Failed to generate TOTP' },
-      { status: 500 }
-    );
-  }
+import { apiError, ok, requireUser } from '@/lib/auth';
+import { eventId } from '@/lib/data-service';
+import { getServerSupabaseClient } from '@/lib/supabase/server';
+import { generateTotpToken } from '@/lib/totp';
+export async function GET(_: Request, c: { params: Promise<{ id: string }> }) {
+  try { await requireUser(['ADMIN']); const { id } = await c.params;
+    const { data, error } = await getServerSupabaseClient().from('events').select('totp_secret').eq('id', eventId(id)).single(); if (error) throw error;
+    const now = Date.now(); return ok({ token: generateTotpToken(data.totp_secret, now), timestamp: now, expiresAt: (Math.floor(now/5000)+1)*5000, secret: data.totp_secret });
+  } catch(e) { return apiError(e); }
 }

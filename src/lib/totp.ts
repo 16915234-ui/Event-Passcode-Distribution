@@ -36,30 +36,32 @@ export function generateTotpToken(secretBase32: string, timestamp?: number): str
 /**
  * Validate TOTP token with Grace Period:
  * Accepts the current time step (delta = 0) and previous step (delta = -1).
- * Window: 1 allows +/- 1 interval (5-10 seconds grace period).
+ * Inspect adjacent intervals but accept only current and previous, never future.
  */
 export function validateTotpToken(
   secretBase32: string,
-  token: string
+  token: string,
+  timestamp = Date.now()
 ): { isValid: boolean; delta: number | null } {
   try {
     const cleanToken = token.trim();
-    if (!cleanToken || cleanToken.length !== 6) {
+    if (!/^\d{6}$/.test(cleanToken)) {
       return { isValid: false, delta: null };
     }
 
     const totp = getTotpInstance(secretBase32);
-    // window: 1 checks current step, -1 step, and +1 step (slight clock skew)
+    // Inspect adjacent steps; reject the future step below.
     const delta = totp.validate({
       token: cleanToken,
       window: 1,
+      timestamp,
     });
 
     // delta === null means invalid/expired token.
     // delta === 0 is exact current period.
     // delta === -1 is previous period (acceptable within grace period).
-    // delta === 1 is slightly early (clock forward).
-    const isValid = delta !== null && delta >= -1 && delta <= 1;
+    // delta === 1 is a future code and must be rejected.
+    const isValid = delta === 0 || delta === -1;
 
     return { isValid, delta };
   } catch (err) {

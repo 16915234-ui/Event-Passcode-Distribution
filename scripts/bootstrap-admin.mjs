@@ -1,0 +1,13 @@
+import { createClient } from '@supabase/supabase-js';
+import nextEnv from '@next/env';
+const { loadEnvConfig } = nextEnv;
+loadEnvConfig(process.cwd());
+const { NEXT_PUBLIC_SUPABASE_URL:url, SUPABASE_SERVICE_ROLE_KEY:key, ARU_ADMIN_USERNAME:username, ARU_ADMIN_PASSWORD:password, ARU_ADMIN_NAME:name }=process.env;
+if(!url||!key||!username||!password||!name||!/^[a-zA-Z0-9._-]{3,40}$/.test(username)||password.length<12)throw new Error('Set Supabase credentials, ARU_ADMIN_USERNAME, ARU_ADMIN_NAME and ARU_ADMIN_PASSWORD (12+ characters).');
+const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+const existing=await db.from('users').select('id').eq('username',username.toLowerCase()).maybeSingle();
+if(existing.error)throw new Error('Apply the database migration first.');
+if(existing.data)throw new Error('Account already exists; this script never changes existing roles or passwords.');
+const {error}=await db.auth.admin.createUser({email:`${username.toLowerCase()}@accounts.aru.invalid`,password,email_confirm:true,app_metadata:{aru_provisioned:true,username:username.toLowerCase(),full_name:name,role:'ADMIN'}});
+if(error)throw new Error('Could not create admin. Check Auth settings and migration.');
+console.log('Admin account created. Sign in using the configured username.');

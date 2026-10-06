@@ -1,26 +1,20 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@import 'tailwindcss';
+@font-face { font-family: 'LINE Seed Sans TH'; src: url('/fonts/line-seed-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'LINE Seed Sans TH'; src: url('/fonts/line-seed-bold.woff2') format('woff2'); font-weight: 600 900; font-display: swap; }
+@font-face { font-family: 'TH Sarabun'; src: url('/fonts/th-sarabun.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+:root { --background:#faf9f6; --foreground:#292724; --card:#fff; --primary:#a82430; --muted:#f2f0eb; --muted-foreground:#76716b; --border:#e7e3dc; --input:#ded9d1; --gold:#b17d24; }
+@theme inline { --color-background:var(--background); --color-foreground:var(--foreground); --color-card:var(--card); --color-primary:var(--primary); --color-muted:var(--muted); --color-muted-foreground:var(--muted-foreground); --color-border:var(--border); --color-input:var(--input); --color-gold:var(--gold); --font-sans:'LINE Seed Sans TH',Tahoma,sans-serif; }
+* { box-sizing:border-box; }
+body { background:var(--background); color:var(--foreground); font-family:var(--font-sans); }
+button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
+button:not(:disabled),select { cursor:pointer; }
+label { display:block; font-size:.875rem; font-weight:600; }
+label>input,label>select,label>textarea { margin-top:.5rem; font-weight:400; }
+select,textarea { width:100%; border:1px solid var(--input); border-radius:.75rem; background:white; padding:.7rem .8rem; font:inherit; }
+select:focus,textarea:focus { outline:2px solid #a8243040; outline-offset:2px; }
+h1,h2,h3 { line-height:1.4; }
+.eyebrow { color:var(--gold); font-size:.7rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+.official-document { font-family:'TH Sarabun',serif; font-size:20pt; }
+.qr-box svg { max-width:100%; height:auto; }
+@media print { header,nav,button,.no-print { display:none!important; } body { background:white; } .official-document { color:black; } }
+@media(prefers-reduced-motion:reduce) { * { animation:none!important; transition:none!important; } }

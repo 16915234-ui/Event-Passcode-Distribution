@@ -1,7 +1,7 @@
 // Web Audio API Synthesizer for instant zero-latency sound feedback
 export function playSuccessChime() {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
 
@@ -22,14 +22,14 @@ export function playSuccessChime() {
 
     osc1.start(now);
     osc1.stop(now + 0.35);
-  } catch (e) {
+  } catch {
     // Audio context may be restricted by autoplay policy until user gesture
   }
 }
 
 export function playErrorBuzz() {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
 
@@ -49,7 +49,7 @@ export function playErrorBuzz() {
 
     osc.start(now);
     osc.stop(now + 0.3);
-  } catch (e) {
+  } catch {
     // Ignore autoplay restriction
   }
 }

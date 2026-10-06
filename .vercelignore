@@ -1,0 +1,6 @@
+.assets-temp
+test-results
+.env*
+!.env.example
+tests
+*.tsbuildinfo
