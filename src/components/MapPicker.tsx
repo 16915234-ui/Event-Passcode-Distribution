@@ -22,7 +22,7 @@ interface MapPickerProps {
   onLocationChange: (lat: number, lng: number) => void;
 }
 
-function LocationMarker({ position, radius, onLocationChange }: any) {
+function LocationMarker({ position, radius, onLocationChange }: { position: L.LatLngLiteral | null; radius: number; onLocationChange: MapPickerProps['onLocationChange'] }) {
   const map = useMap();
   
   useEffect(() => {

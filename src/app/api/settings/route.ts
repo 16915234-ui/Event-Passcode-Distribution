@@ -5,8 +5,9 @@ export async function GET() {
   try {
     await requireUser(['ADMIN']);
     const db = getServerSupabaseClient();
-    const { data } = await db.from('aru_settings').select('*');
-    const settings = (data || []).reduce((acc: any, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
+    const { data, error } = await db.from('aru_settings').select('key,value');
+    if (error) throw error;
+    const settings = Object.fromEntries((data || []).map(row => [row.key, row.value]));
     return ok({ settings });
   } catch (e) {
     return apiError(e);
@@ -18,9 +19,8 @@ export async function POST(r: Request) {
     await requireUser(['ADMIN']);
     const body = await bodyOf(r);
     const db = getServerSupabaseClient();
-    for (const [key, value] of Object.entries(body)) {
-      await db.from('aru_settings').upsert({ key, value });
-    }
+    const records = Object.entries(body).map(([key, value]) => ({ key, value }));
+    if (records.length) { const { error } = await db.from('aru_settings').upsert(records); if (error) throw error; }
     return ok({ message: 'บันทึกการตั้งค่าแล้ว' });
   } catch (e) {
     return apiError(e);

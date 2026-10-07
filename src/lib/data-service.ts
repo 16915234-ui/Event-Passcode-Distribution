@@ -3,8 +3,10 @@ import { getServerSupabaseClient } from './supabase/server';
 import { ApiError } from './auth';
 import { generateTotpSecret } from './totp';
 import { studentQr } from './static-qr';
-import { UUID, USERNAME, accountEmail, validCoordinates } from './validation';
+import { UUID, USERNAME, validCoordinates } from './validation';
 import type { Profile, Event } from '@/types';
+import { eventQueryOptions } from './query-options';
+import { accountInput, provisionAccount } from './account-provisioning';
 export const EVENT_COLUMNS = 'id,name,latitude,longitude,radius_meters,created_at';
 export function eventId(id: unknown): string { if (typeof id !== 'string' || !UUID.test(id)) throw new ApiError('รหัสกิจกรรมไม่ถูกต้อง'); return id; }
 export async function getEvent(id: string): Promise<Event> {
@@ -13,11 +15,12 @@ export async function getEvent(id: string): Promise<Event> {
 }
 export async function listEvents(user: Profile) {
   const db = getServerSupabaseClient();
-  let query = db.from('events').select(EVENT_COLUMNS).order('created_at', { ascending: false });
   if (user.role === 'STUDENT') {
-    const { data, error } = await db.from('event_registrations').select('event_id').eq('student_id', user.id);
-    if (error) throw error; query = query.in('id', (data || []).map(r => r.event_id));
+    const { data, error } = await db.from('events').select(`${EVENT_COLUMNS},event_registrations!inner(student_id)`).eq('event_registrations.student_id', user.id).order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(({ event_registrations: _registration, ...event }) => { void _registration; return event; });
   }
+  const query = db.from('events').select(EVENT_COLUMNS).order('created_at', { ascending: false });
   const { data, error } = await query; if (error) throw error; return data || [];
 }
 export function eventInput(body: Record<string, unknown>) {
@@ -30,13 +33,23 @@ export async function saveEvent(body: Record<string, unknown>, id?: string) {
   const query = id ? db.from('events').update(values).eq('id', eventId(id)) : db.from('events').insert({ ...values, totp_secret: generateTotpSecret() });
   const { data, error } = await query.select(EVENT_COLUMNS).single(); if (error) throw error; return data;
 }
-export async function eventDetail(id: string, user: Profile) {
-  const event = await getEvent(id); const db = getServerSupabaseClient();
-  const { data: registrations, error } = await db.from('event_registrations').select('*,users!student_id(id,username,full_name,role)').eq('event_id', id).order('created_at');
-  if (error) throw error;
-  let passcodes;
-  if (user.role === 'ADMIN') { const result = await db.from('passcodes').select('*').eq('event_id', id); if (result.error) throw result.error; passcodes = result.data; }
-  return { event, registrations, ...(passcodes ? { passcodes } : {}), stats: { totalStudents: registrations.length, attendedCount: registrations.filter(r => r.is_attended).length, ...(passcodes ? { availablePasscodes: passcodes.filter(p => !p.assigned_to).length } : {}) } };
+export async function eventDetail(id: string, user: Profile, options = eventQueryOptions(new URLSearchParams())) {
+  eventId(id);
+  const db = getServerSupabaseClient();
+  if (options.view === 'codes' && user.role !== 'ADMIN') throw new ApiError('ไม่มีสิทธิ์เข้าถึง Passcode', 403);
+  let roster = db.from('event_registrations').select('id,event_id,student_id,is_attended,check_in_time,check_in_method,users!student_id!inner(id,username,full_name,role)', { count: 'exact' }).eq('event_id', id).order('created_at').order('id').range(options.from, options.to);
+  if (options.search) roster = roster.or(`username.ilike.%${options.search}%,full_name.ilike.%${options.search}%`, { referencedTable: 'users' });
+  // Independent reads run concurrently; count on the database, not on a truncated browser list.
+  const [event, total, attended, available, registrations, codes] = await Promise.all([
+    getEvent(id),
+    db.from('event_registrations').select('id', { count: 'exact', head: true }).eq('event_id', id),
+    db.from('event_registrations').select('id', { count: 'exact', head: true }).eq('event_id', id).eq('is_attended', true),
+    user.role === 'ADMIN' ? db.from('passcodes').select('id', { count: 'exact', head: true }).eq('event_id', id).is('assigned_to', null) : null,
+    options.view === 'roster' ? roster : null,
+    options.view === 'codes' ? db.from('passcodes').select('id,event_id,code_value,assigned_to,users!assigned_to(username)', { count: 'exact' }).eq('event_id', id).order('created_at').order('id').range(options.from, options.to) : null,
+  ]);
+  for (const result of [total, attended, available, registrations, codes]) if (result?.error) throw result.error;
+  return { event, registrations: registrations?.data || [], ...(codes ? { passcodes: codes.data || [] } : {}), stats: { totalStudents: total.count || 0, attendedCount: attended.count || 0, ...(available ? { availablePasscodes: available.count || 0 } : {}) }, pagination: { page: options.page, pageSize: options.pageSize, total: registrations?.count ?? codes?.count ?? 0 } };
 }
 export async function getTicket(id: string, studentId: string) {
   const db = getServerSupabaseClient();
@@ -64,18 +77,9 @@ export function validateStudents(value: unknown): ImportStudent[] {
 export async function importStudents(id: string, value: unknown) {
   const students = validateStudents(value); await getEvent(id); const db = getServerSupabaseClient();
   const ids: string[] = [];
-  for (const s of students) {
-    const { data: existing, error: lookupError } = await db.from('users').select('id,role').eq('username', s.username).maybeSingle();
-    if (lookupError) throw lookupError;
-    if (existing) { if (existing.role !== 'STUDENT') throw new ApiError(`${s.username} เป็นบัญชีบุคลากร`); ids.push(existing.id); continue; }
-    const { data, error } = await db.auth.admin.createUser({ email: accountEmail(s.username), password: s.password, email_confirm: true, app_metadata: { aru_provisioned: true, username: s.username, full_name: s.full_name, role: 'STUDENT', faculty: s.faculty, major: s.major, academic_year: s.academic_year, plaintext_password: s.password } });
-    if (error) {
-      // A simultaneous import may have created this account. Do not reset its password.
-      const retry = await db.from('users').select('id,role').eq('username', s.username).maybeSingle();
-      if (retry.data?.role === 'STUDENT') { ids.push(retry.data.id); continue; }
-      throw new ApiError(`สร้างบัญชี ${s.username} ไม่สำเร็จ: ${error.message}`, 409);
-    }
-    ids.push(data.user.id);
+  for (const student of students) {
+    const result = await provisionAccount(db, accountInput({...student, role:'STUDENT'}), 'import');
+    ids.push(result.id);
   }
   const { data, error } = await db.rpc('allocate_students', { p_event: id, p_students: ids });
   if (error) { if (error.message.includes('INSUFFICIENT_PASSCODES')) throw new ApiError('Passcode ไม่พอ ยังไม่ได้เพิ่มรายชื่อเข้ากิจกรรม เติมรหัสแล้วนำเข้าอีกครั้งได้ บัญชีที่สร้างแล้วจะใช้รหัสผ่านเดิม', 409); throw error; }

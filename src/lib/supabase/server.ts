@@ -1,12 +1,15 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+let serviceClient: SupabaseClient | undefined;
 export function getServerSupabaseClient() {
+  if (serviceClient) return serviceClient;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('กรุณาตั้งค่า Supabase และ Service Role Key');
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  serviceClient = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return serviceClient;
 }
 export async function getAuthClient() {
   const jar = await cookies();

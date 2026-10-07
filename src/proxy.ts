@@ -3,6 +3,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   const path = request.nextUrl.pathname;
+  // API handlers verify the current Auth user and role themselves. Do not repeat
+  // both remote lookups here for every read, scan and projector tick.
+  if (path.startsWith('/api/')) {
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+  }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return path === '/login' ? response : NextResponse.redirect(new URL('/login', request.url));
   }
@@ -16,7 +22,8 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: verified } = await supabase.auth.getClaims();
+  const user = verified?.claims?.sub ? { id: verified.claims.sub } : null;
   const finish = (result: NextResponse) => { response.cookies.getAll().forEach(c => result.cookies.set(c)); result.headers.set('Cache-Control', 'private, no-store'); return result; };
   if (path.startsWith('/api/auth/')) return finish(response);
   if (!user) return finish(path.startsWith('/api/') ? NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 }) : path === '/login' ? response : NextResponse.redirect(new URL('/login', request.url)));

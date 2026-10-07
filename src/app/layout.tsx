@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import NetworkActivity from '@/components/NetworkActivity';
 
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <NetworkActivity/>
       </body>
     </html>
   );

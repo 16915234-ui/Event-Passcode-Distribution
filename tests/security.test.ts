@@ -59,7 +59,7 @@ test('complete SQL file installs fresh, links the specified admin, and preserves
   await db.exec(sql);
   assert.equal((await db.query('SELECT id FROM public.events')).rows.length,1);
   assert.equal((await db.query('SELECT id FROM public.users')).rows.length,1);
-  assert.equal(((await db.query('SELECT email FROM auth.users')).rows[0] as any).email,'admin16915234@aru.ac.th');
+  assert.equal((await db.query<{email:string}>('SELECT email FROM auth.users')).rows[0].email,'admin16915234@aru.ac.th');
  }finally{await db.close();}
 });
 test('PostgreSQL: RLS, atomic allocation, attendance idempotency and service-only RPCs',async()=>{

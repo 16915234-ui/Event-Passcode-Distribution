@@ -16,5 +16,12 @@ h1,h2,h3 { line-height:1.4; }
 .eyebrow { color:var(--gold); font-size:.7rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
 .official-document { font-family:'TH Sarabun',serif; font-size:20pt; }
 .qr-box svg { max-width:100%; height:auto; }
+.skeleton-shimmer { position:relative; overflow:hidden; }
+.skeleton-shimmer::after { content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent); animation:shimmer 1.6s infinite; }
+.loading-bar { animation:loading-bar 1.2s ease-in-out infinite; }
+.loading-reveal { animation:loading-reveal .2s ease-out; }
+@keyframes shimmer { to { transform:translateX(100%); } }
+@keyframes loading-bar { from { transform:translateX(-100%); } to { transform:translateX(400%); } }
+@keyframes loading-reveal { from { opacity:.5; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
 @media print { header,nav,button,.no-print { display:none!important; } body { background:white; } .official-document { color:black; } }
-@media(prefers-reduced-motion:reduce) { * { animation:none!important; transition:none!important; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
