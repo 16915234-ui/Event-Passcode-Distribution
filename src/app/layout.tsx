@@ -7,6 +7,16 @@ export const metadata: Metadata = {
   title: 'ARU Event Pass | ระบบลงทะเบียนกิจกรรม',
   description:
     'ระบบลงทะเบียนและแจก Passcode กิจกรรม มหาวิทยาลัยราชภัฏพระนครศรีอยุธยา พัฒนาโดย จิรายุทธ บุตรชานนท์',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ARU Event Pass',
+  },
+};
+
+export const viewport = {
+  themeColor: '#8e202c',
 };
 
 export default function RootLayout({
