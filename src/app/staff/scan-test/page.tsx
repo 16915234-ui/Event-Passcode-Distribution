@@ -3,14 +3,19 @@ import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { PageHeading } from '@/components/feedback';
-import { Play, Pause, RefreshCw } from 'lucide-react';
+import { Play, Pause, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 export default function ScanTestPage() {
   const [active, setActive] = useState(false);
   const [codes, setCodes] = useState<string[]>([]);
   const [speed, setSpeed] = useState(2000);
+  const [staticTest, setStaticTest] = useState(false);
 
   const generateCodes = () => {
+    if (staticTest) {
+      setCodes(['ARUTEST:SUCCESS']);
+      return;
+    }
     const newCodes = Array.from({ length: 6 }).map(() => {
       // Generate a mock QR payload similar to real ones: aru:eventid:studentid:signature
       const rnd = Math.random().toString(36).substring(2, 10);
@@ -21,27 +26,31 @@ export default function ScanTestPage() {
 
   useEffect(() => {
     generateCodes();
-  }, []);
+  }, [staticTest]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || staticTest) return;
     const interval = setInterval(() => {
       generateCodes();
     }, speed);
     return () => clearInterval(interval);
-  }, [active, speed]);
+  }, [active, speed, staticTest]);
 
   return (
     <>
       <PageHeading eyebrow="Staff Testing" title="ทดสอบความเร็วเครื่องสแกน" description="หน้าสำหรับทดสอบประสิทธิภาพและมุมรับภาพของเครื่องสแกน QR Code ทีมงาน" />
       
       <div className="mb-8 flex flex-wrap items-center gap-4 rounded-xl border bg-card p-4">
-        <Button onClick={() => setActive(!active)} variant={active ? 'outline' : 'default'}>
-          {active ? <><Pause className="mr-2 h-4 w-4" /> หยุดสุ่มอัตโนมัติ</> : <><Play className="mr-2 h-4 w-4" /> เริ่มสุ่มอัตโนมัติ</>}
+        <Button onClick={() => { setStaticTest(false); setActive(!active); }} variant={active && !staticTest ? 'outline' : 'default'} disabled={staticTest}>
+          {active && !staticTest ? <><Pause className="mr-2 h-4 w-4" /> หยุดสุ่มอัตโนมัติ</> : <><Play className="mr-2 h-4 w-4" /> เริ่มสุ่มอัตโนมัติ</>}
         </Button>
         
-        <Button onClick={generateCodes} variant="outline" disabled={active}>
+        <Button onClick={() => { setStaticTest(false); setActive(false); setTimeout(generateCodes, 0); }} variant="outline" disabled={active && !staticTest}>
           <RefreshCw className="mr-2 h-4 w-4" /> สุ่มรหัสใหม่เดี๋ยวนี้
+        </Button>
+
+        <Button onClick={() => { setStaticTest(true); setActive(false); }} variant={staticTest ? 'default' : 'secondary'}>
+          <CheckCircle2 className="mr-2 h-4 w-4" /> แสดง QR ทดสอบสแกนสำเร็จ
         </Button>
         
         <div className="flex items-center gap-2 border-l pl-4">

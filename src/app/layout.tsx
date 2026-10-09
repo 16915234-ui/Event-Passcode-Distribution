@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: 'ARU Event Pass | ระบบลงทะเบียนกิจกรรม',
   description:
     'ระบบลงทะเบียนและแจก Passcode กิจกรรม มหาวิทยาลัยราชภัฏพระนครศรีอยุธยา พัฒนาโดย จิรายุทธ บุตรชานนท์',
-  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -29,6 +28,9 @@ export default function RootLayout({
       lang="th"
       className="h-full antialiased"
     >
+      <head>
+        <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <NetworkActivity/>
