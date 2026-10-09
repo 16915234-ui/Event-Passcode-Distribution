@@ -49,7 +49,7 @@ export default function ScanTestPage() {
           <RefreshCw className="mr-2 h-4 w-4" /> สุ่มรหัสใหม่เดี๋ยวนี้
         </Button>
 
-        <Button onClick={() => { setStaticTest(true); setActive(false); }} variant={staticTest ? 'default' : 'secondary'}>
+        <Button onClick={() => { setStaticTest(true); setActive(false); }} variant={staticTest ? 'default' : 'outline'}>
           <CheckCircle2 className="mr-2 h-4 w-4" /> แสดง QR ทดสอบสแกนสำเร็จ
         </Button>
         
